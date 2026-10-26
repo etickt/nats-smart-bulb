@@ -1,0 +1,18 @@
+name = "natslight-cloud-agent"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# Runs every 1 minute in the cloud to check if the Washington Nationals are playing
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+LIFX_SELECTOR = "all"
+LOSING_HEX = "#1D3587"
+LOSING_BRIGHTNESS = "65"
+GOVEE_MODEL = "H6008"
+
+# Set your secret API token using:
+# npx wrangler secret put LIFX_TOKEN
+# or
+# npx wrangler secret put GOVEE_API_KEY

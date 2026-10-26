@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MLB Smart Bulb Cloud Agent — Live Team Light Controller</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-logo" id="brandLogo" title="Team Emblem">W</div>
+        <div class="brand-text">
+          <h1 id="appTitle">NatsLight Cloud Agent</h1>
+          <p id="appSubtitle">Automatic Washington Nationals Smart Bulb Controller</p>
+        </div>
+      </div>
+
+      <div class="header-badges">
+        <div class="team-picker-wrap">
+          <label for="teamSelect" class="team-picker-label">⚾ My Team:</label>
+          <select id="teamSelect" class="form-select team-select"></select>
+        </div>
+
+        <div class="status-pill" id="modePill">
+          <span class="status-dot" id="modeDot"></span>
+          <span id="modeText">MLB Live API Connected</span>
+        </div>
+        <button class="btn btn-secondary" id="checkMlbNowBtn" title="Fetch latest game from MLB.com">
+          🔄 Check MLB Live Now
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container">
+    <!-- Left Column: Bulb Visualizer + Scoreboard & Simulator -->
+    <div class="col-stack">
+      <!-- Smart Bulb Card -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">💡 Smart Bulb Live State</div>
+          <span class="badge" id="bulbTargetBadge">Virtual + Cloud Ready</span>
+        </div>
+
+        <div class="bulb-stage" id="bulbStage">
+          <div class="bulb-wrapper">
+            <div class="bulb-halo" id="bulbHalo"></div>
+            <div class="bulb-glass off" id="bulbGlass">
+              <span class="bulb-curly-w" id="bulbEmblem">W</span>
+            </div>
+            <div class="bulb-neck"></div>
+            <div class="bulb-base"></div>
+            <div class="bulb-contact"></div>
+          </div>
+
+          <div class="bulb-readout">
+            <div class="bulb-state-label" id="bulbStateTitle">BULB OFF — No Active Game</div>
+            <div class="bulb-sub-label" id="bulbStateSub">Waiting for first pitch...</div>
+          </div>
+
+          <div class="bulb-metrics">
+            <div class="metric-box">
+              <div class="metric-label">Power</div>
+              <div class="metric-value" id="metricPower">OFF</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Color Hex</div>
+              <div class="metric-value" id="metricColor">#000000</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Brightness</div>
+              <div class="metric-value" id="metricBrightness">0%</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Live Scoreboard & Simulator Card -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title" id="trackerCardTitle">⚾ Nationals Game Tracker</div>
+          <span class="badge live" id="gameSourceBadge">MLB Stats API</span>
+        </div>
+
+        <!-- Scoreboard Display -->
+        <div class="scoreboard">
+          <div class="score-status-row">
+            <span id="gameDateText">Checking MLB schedule...</span>
+            <span class="inning-badge" id="gameStatusBadge">PRE-GAME</span>
+          </div>
+
+          <div class="teams-grid">
+            <div class="team-row" id="awayTeamRow">
+              <div class="team-info">
+                <div class="team-abbr" id="awayAbbr">OPP</div>
+                <div>
+                  <div class="team-name" id="awayName">Opponent</div>
+                  <div class="team-record" id="awaySub">Away</div>
+                </div>
+              </div>
+              <div class="team-score" id="awayScore">-</div>
+            </div>
+
+            <div class="team-row nats-row" id="homeTeamRow">
+              <div class="team-info">
+                <div class="team-abbr" id="natsAbbr">WSH</div>
+                <div>
+                  <div class="team-name" id="natsName">Washington Nationals</div>
+                  <div class="team-record" id="natsSub">Home • Team ID #120</div>
+                </div>
+              </div>
+              <div class="team-score" id="natsScore">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Simulation / Test Mode Controls -->
+        <div class="sim-section-title">
+          <span>🧪 Test &amp; Simulation Mode</span>
+          <button class="btn" id="autoDemoBtn" style="padding: 0.3rem 0.65rem; font-size: 0.76rem;">
+            ▶️ Auto-Play Demo Game
+          </button>
+        </div>
+
+        <!-- Opponent & Home/Away Picker for Simulation -->
+        <div class="sim-matchup-bar">
+          <div class="sim-matchup-field">
+            <label for="simOppSelect" class="sim-mini-label">Simulated Opponent:</label>
+            <select id="simOppSelect" class="form-select sim-mini-select"></select>
+          </div>
+          <div class="sim-matchup-field">
+            <label for="simVenueSelect" class="sim-mini-label">Venue (For Tied/0–0 Rule):</label>
+            <select id="simVenueSelect" class="form-select sim-mini-select">
+              <option value="home">My Team is HOME Team</option>
+              <option value="away">My Team is AWAY (Opponent is Home)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sim-grid">
+          <button class="btn sim-btn" data-sim="pregame">
+            <span class="sim-dot" style="background: #475569;"></span>
+            <span>Pre-Game / Off-Day (Bulb Off)</span>
+          </button>
+          <button class="btn sim-btn" data-sim="tied">
+            <span class="sim-dot" id="simDotTied" style="background: #e8001c;"></span>
+            <span id="simLabelTied">0–0 / Tied 2–2 (Home Team Color)</span>
+          </button>
+          <button class="btn sim-btn" data-sim="winning">
+            <span class="sim-dot" id="simDotWinning" style="background: #ff1a35; box-shadow: 0 0 8px #ff1a35;"></span>
+            <span id="simLabelWinning">Winning 5–2 (My Team Color)</span>
+          </button>
+          <button class="btn sim-btn" data-sim="losing">
+            <span class="sim-dot" id="simDotLosing" style="background: #002d72;"></span>
+            <span id="simLabelLosing">Losing 2–4 (Opponent / Opp. Spectrum)</span>
+          </button>
+          <button class="btn sim-btn" data-sim="score_run">
+            <span class="sim-dot" style="background: #ffffff; box-shadow: 0 0 8px #fff;"></span>
+            <span id="simLabelScore">⚡ Event: Team Scores a Run!</span>
+          </button>
+          <button class="btn sim-btn" data-sim="curly_w">
+            <span class="sim-dot" style="background: #10b981;"></span>
+            <span id="simLabelWin">🎉 Final: Victory Pulse! (Then Off)</span>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Right Column: Bulb Rules + Cloud Setup + Activity Log -->
+    <div class="col-stack">
+      <!-- Color & Behavior Rules Card -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">🎨 Active Matchup Bulb Colors</div>
+          <span class="badge" id="colorCollisionBadge">Dynamic Matchup Rules</span>
+        </div>
+
+        <!-- 3-Way Matchup Color Swatch Preview Bar -->
+        <div class="color-spectrum-bar three-col">
+          <div class="spectrum-chip">
+            <span class="swatch-circle" id="winColorSwatch"></span>
+            <div>
+              <div class="spectrum-title">Winning (My Team)</div>
+              <div class="spectrum-sub" id="winColorDesc">Nationals Red (#E8001C)</div>
+            </div>
+          </div>
+
+          <div class="spectrum-chip">
+            <span class="swatch-circle" id="tiedColorSwatch"></span>
+            <div>
+              <div class="spectrum-title">0–0 or Tied (Home Team)</div>
+              <div class="spectrum-sub" id="tiedColorDesc">Home Team Color</div>
+            </div>
+          </div>
+
+          <div class="spectrum-chip">
+            <span class="swatch-circle" id="loseColorSwatch"></span>
+            <div>
+              <div class="spectrum-title" id="loseColorTitle">Losing (Opponent Color)</div>
+              <div class="spectrum-sub" id="loseColorDesc">Opponent Color</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="collision-banner hidden" id="collisionBanner">
+          🎨 <strong>Same-Color Matchup Detected!</strong> Both teams wear similar colors, so the losing indicator automatically switched to the <strong>Opposite Spectrum</strong> color for clear contrast.
+        </div>
+
+        <div class="row-2col">
+          <div class="form-group">
+            <label class="form-label" for="tiedPreset">When Game is 0–0 or Tied</label>
+            <select class="form-select" id="tiedPreset">
+              <option value="home_team" id="optTiedHome">Home Team Color (Default)</option>
+              <option value="my_team" id="optTiedMyTeam">Always My Team's Color</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="losingPreset">When My Team is Losing (Trailing)</label>
+            <select class="form-select" id="losingPreset">
+              <option value="opponent_or_opposite" id="optLoseOpponent">Opposing Team Color (Opposite Spectrum if same)</option>
+              <option value="opposite_spectrum" id="optLoseOpposite">Always Opposite Spectrum (180° Hue Shift)</option>
+              <option value="team_secondary" id="optLoseSecondary">My Team Secondary Color (65%)</option>
+              <option value="dim_primary" id="optLoseDim">Dimmed My Team Color (25%)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toggle-list">
+          <label class="toggle-item">
+            <div>
+              <div class="toggle-text" id="labelFlashScore">⚡ Flash Bulb When Your Team Scores a Run</div>
+              <div class="toggle-sub">Pulses bright team color &amp; white whenever your team adds to their score</div>
+            </div>
+            <input type="checkbox" id="toggleFlashScore" checked />
+          </label>
+
+          <label class="toggle-item">
+            <div>
+              <div class="toggle-text" id="labelWinPulse">🎉 Victory Celebration Pulse</div>
+              <div class="toggle-sub">Celebrates a win for 6 seconds before turning off</div>
+            </div>
+            <input type="checkbox" id="toggleWinPulse" checked />
+          </label>
+
+          <label class="toggle-item">
+            <div>
+              <div class="toggle-text">🌙 Turn Bulb Off Automatically When Game Ends</div>
+              <div class="toggle-sub">Powers the bulb off once the game reaches Final status</div>
+            </div>
+            <input type="checkbox" id="toggleAutoOff" checked />
+          </label>
+        </div>
+      </section>
+
+      <!-- Connect Real Smart Bulb Card -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">☁️ Connect a Real Smart Bulb</div>
+          <span class="badge" id="providerStatusBadge">Simulated Mode</span>
+        </div>
+
+        <details class="help-box">
+          <summary>📖 Which bulb should I buy &amp; how do non-technical users connect?</summary>
+          <ol>
+            <li><strong>Easiest Option — LIFX Color Wi-Fi Bulb:</strong> Plugs directly into Wi-Fi (no hub needed). Go to <code>cloud.lifx.com</code>, click <em>Generate New Token</em>, and paste it below.</li>
+            <li><strong>Budget Option — Govee Wi-Fi RGBIC Bulb (e.g. H6008):</strong> In the Govee phone app, go to <em>Profile → Settings → About Us → Apply for API Key</em>. Paste the emailed key and Device MAC below.</li>
+            <li><strong>Try Before You Buy:</strong> Leave this on <em>Virtual Bulb Only</em> to test everything right on screen!</li>
+          </ol>
+        </details>
+
+        <div class="form-group">
+          <label class="form-label" for="bulbProvider">Smart Bulb Brand / Cloud Provider</label>
+          <select class="form-select" id="bulbProvider">
+            <option value="virtual">Virtual Bulb Only (On-Screen Simulation)</option>
+            <option value="lifx">LIFX Cloud API (Recommended — Easiest Setup)</option>
+            <option value="govee">Govee Cloud API (Wi-Fi Smart Bulbs)</option>
+            <option value="webhook">Home Assistant / IFTTT / Custom Cloud Webhook</option>
+          </select>
+        </div>
+
+        <!-- LIFX Config Fields -->
+        <div id="lifxFields" class="hidden">
+          <div class="row-2col">
+            <div class="form-group">
+              <label class="form-label" for="lifxToken">LIFX Cloud Personal Access Token</label>
+              <input type="password" class="form-input" id="lifxToken" placeholder="Paste token from cloud.lifx.com..." />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="lifxSelector">Which Bulb(s) to Control</label>
+              <input type="text" class="form-input" id="lifxSelector" value="all" placeholder="all or label:Living Room" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Govee Config Fields -->
+        <div id="goveeFields" class="hidden">
+          <div class="row-2col">
+            <div class="form-group">
+              <label class="form-label" for="goveeKey">Govee API Key</label>
+              <input type="password" class="form-input" id="goveeKey" placeholder="Paste Govee API Key..." />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="goveeModel">Bulb Model (e.g. H6008)</label>
+              <input type="text" class="form-input" id="goveeModel" value="H6008" placeholder="H6008" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="goveeDevice">Govee Device MAC Address</label>
+            <input type="text" class="form-input" id="goveeDevice" placeholder="AA:BB:CC:DD:EE:FF:00:11" />
+          </div>
+        </div>
+
+        <!-- Webhook Config Fields -->
+        <div id="webhookFields" class="hidden">
+          <div class="form-group">
+            <label class="form-label" for="webhookUrl">Cloud Webhook URL (Home Assistant / IFTTT)</label>
+            <input type="url" class="form-input" id="webhookUrl" placeholder="https://hooks.nabu.casa/..." />
+            <div class="form-hint">Receives a JSON POST with <code>{ power, hex, brightness, gameState, teamScore, oppScore }</code>.</div>
+          </div>
+        </div>
+
+        <div class="row-2col" style="margin-top: 0.5rem;">
+          <button class="btn btn-primary btn-block" id="testRealBulbBtn">
+            💡 Test Bulb: Team Winning Color
+          </button>
+          <button class="btn btn-block" id="turnOffBulbBtn">
+            ⚫ Turn Bulb Off Now
+          </button>
+        </div>
+      </section>
+
+      <!-- Agent Activity Log -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">📡 Agent Activity &amp; Cloud Log</div>
+          <button class="btn" id="clearLogBtn" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;">Clear</button>
+        </div>
+        <div class="log-box" id="activityLog"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
